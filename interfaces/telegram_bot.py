@@ -21,7 +21,7 @@ from telegram.ext import (
 
 # Import project modules
 from api.constants import DATA_DIR, SELECTING_NETWORK, SELECT_AUTH_TYPE, ENTER_CREDENTIALS
-from api.constants import ENTER_API_KEY, ENTER_WALLET_ADDRESS, CONFIRM_CREDENTIALS
+from api.constants import ENTER_SECRET_KEY, ENTER_WALLET_ADDRESS, CONFIRM_CREDENTIALS
 from api.constants import SYMBOL, SIDE, AMOUNT, PRICE, CONFIRMATION
 from api.connector import ApiConnector
 from api.order import OrderHandler
@@ -51,11 +51,11 @@ def encrypt_credentials(data, password):
     # In production, use actual encryption like Fernet
     return hashlib.sha256((json.dumps(data) + salt).encode()).hexdigest()
 
-def save_user_credentials(user_id, network, api_key, wallet_address, password=None):
+def save_user_credentials(user_id, network, secret_key, wallet_address, password=None):
     """Save user credentials securely"""
     credentials = {
         "network": network,
-        "api_key": api_key,
+        "secret_key": secret_key,
         "wallet_address": wallet_address,
         "timestamp": datetime.now().isoformat()
     }
@@ -154,8 +154,8 @@ class ElysiumTelegramBot:
                 SELECT_AUTH_TYPE: [
                     CallbackQueryHandler(self.select_auth_type_callback, pattern='^auth_')
                 ],
-                ENTER_API_KEY: [
-                    MessageHandler(Filters.text & ~Filters.command, self.enter_api_key)
+                ENTER_SECRET_KEY: [
+                    MessageHandler(Filters.text & ~Filters.command, self.ENTER_SECRET_KEY)
                 ],
                 ENTER_WALLET_ADDRESS: [
                     MessageHandler(Filters.text & ~Filters.command, self.enter_wallet_address)
@@ -273,11 +273,11 @@ class ElysiumTelegramBot:
             
         return True
     
-    def _connect_user(self, user_id, api_key, wallet_address, use_testnet=False):
+    def _connect_user(self, user_id, secret_key, wallet_address, network):
         """Connect a user to the exchange"""
-        network_name = "testnet" if use_testnet else "mainnet"
+        network = network
         
-        logging.info(f"Connecting user {user_id} to {network_name}")
+        logging.info(f"Connecting user {user_id} to {network}")
         
         # Initialize API connector if not exists for this user
         if user_id not in self.api_connectors:
@@ -286,7 +286,7 @@ class ElysiumTelegramBot:
         api_connector = self.api_connectors[user_id]
         
         # Connect to exchange
-        success = api_connector.connect(wallet_address, api_key, use_testnet)
+        success = api_connector.connect(wallet_address, secret_key, network)
         
         if success:
             # Initialize order handler if not exists for this user
@@ -298,16 +298,15 @@ class ElysiumTelegramBot:
             # Mark user as connected
             self.connected_users.add(user_id)
             self.user_data[user_id] = {
-                "network": network_name,
+                "network": network,
                 "wallet_address": wallet_address,
-                "api_key": api_key[:5] + "..." + api_key[-3:] if len(api_key) > 8 else "****",
-                "connected_at": datetime.now().isoformat(),
-                "is_testnet": use_testnet
+                "secret_key": secret_key[:5] + "..." + secret_key[-3:] if len(secret_key) > 8 else "****",
+                "connected_at": datetime.now().isoformat()
             }
             
             return True
         else:
-            logging.error(f"Failed to connect user {user_id} to {network_name}")
+            logging.error(f"Failed to connect user {user_id} to {network}")
             return False
     
     def _disconnect_user(self, user_id):
@@ -425,7 +424,7 @@ class ElysiumTelegramBot:
             query.edit_message_text(
                 f"Selected {network.upper()}. Please enter your API secret key:"
             )
-            return ENTER_API_KEY
+            return ENTER_SECRET_KEY
     
     def select_auth_type_callback(self, update: Update, context: CallbackContext):
         """Handle authentication type selection"""
@@ -439,13 +438,13 @@ class ElysiumTelegramBot:
             credentials = load_user_credentials(user_id)
             if not credentials:
                 query.edit_message_text("Error: Could not load saved credentials. Please enter new credentials.")
-                return ENTER_API_KEY
+                return ENTER_SECRET_KEY
             
-            network = credentials.get("network")
-            api_key = credentials.get("api_key")
+            network = "network"
+            secret_key = credentials.get("secret_key")
             wallet_address = credentials.get("wallet_address")
             
-            if self._connect_user(user_id, api_key, wallet_address, network == "testnet"):
+            if self._connect_user(user_id, secret_key, wallet_address, network):
                 query.edit_message_text(
                     f"✅ Successfully connected to {network}\n"
                     f"Wallet: `{wallet_address[:6]}...{wallet_address[-4:]}`",
@@ -459,22 +458,22 @@ class ElysiumTelegramBot:
                     f"❌ Failed to connect using saved credentials. Please enter new credentials.\n\n"
                     f"Please enter your API secret key:"
                 )
-                return ENTER_API_KEY
+                return ENTER_SECRET_KEY
         else:
             # Enter new credentials
             query.edit_message_text(
                 "Please enter your API secret key:"
             )
-            return ENTER_API_KEY
+            return ENTER_SECRET_KEY
     
-    def enter_api_key(self, update: Update, context: CallbackContext):
+    def ENTER_SECRET_KEY(self, update: Update, context: CallbackContext):
         """Handle API key input"""
         user_id = update.effective_user.id
-        api_key = update.message.text.strip()
+        secret_key = update.message.text.strip()
         
         # Store the API key securely
-        if api_key.startswith("0x") and len(api_key) >= 40:
-            self.connection_contexts[user_id]["api_key"] = api_key
+        if secret_key.startswith("0x") and len(secret_key) >= 40:
+            self.connection_contexts[user_id]["secret_key"] = secret_key
             
             # Delete the message containing the API key for security
             try:
@@ -491,7 +490,7 @@ class ElysiumTelegramBot:
                 "Invalid API key format. It should start with '0x' and be at least 40 characters long.\n"
                 "Please enter a valid API key:"
             )
-            return ENTER_API_KEY
+            return ENTER_SECRET_KEY
     
     def enter_wallet_address(self, update: Update, context: CallbackContext):
         """Handle wallet address input"""
@@ -504,12 +503,12 @@ class ElysiumTelegramBot:
             
             # Prepare confirmation message
             network = self.connection_contexts[user_id]["network"]
-            api_key = self.connection_contexts[user_id]["api_key"]
+            secret_key = self.connection_contexts[user_id]["secret_key"]
             
             confirmation_text = (
                 f"Please confirm your credentials:\n\n"
                 f"Network: {network.upper()}\n"
-                f"API Key: {api_key[:5]}...{api_key[-3:]}\n"
+                f"API Key: {secret_key[:5]}...{secret_key[-3:]}\n"
                 f"Wallet: {wallet_address[:6]}...{wallet_address[-4:]}\n\n"
                 f"Would you like to save these credentials for future use?"
             )
@@ -551,18 +550,18 @@ class ElysiumTelegramBot:
         
         # Get credentials from context
         network = self.connection_contexts[user_id]["network"]
-        api_key = self.connection_contexts[user_id]["api_key"]
+        secret_key = self.connection_contexts[user_id]["secret_key"]
         wallet_address = self.connection_contexts[user_id]["wallet_address"]
         
         # Save credentials if requested
         if action == "save":
-            save_user_credentials(user_id, network, api_key, wallet_address)
+            save_user_credentials(user_id, network, secret_key, wallet_address)
             query.edit_message_text("Credentials saved. Connecting...")
         else:
             query.edit_message_text("Connecting with provided credentials...")
         
         # Connect to exchange
-        if self._connect_user(user_id, api_key, wallet_address, network == "testnet"):
+        if self._connect_user(user_id, secret_key, wallet_address, network):
             query.edit_message_text(
                 f"✅ Successfully connected to {network}\n"
                 f"Wallet: `{wallet_address[:6]}...{wallet_address[-4:]}`",
@@ -610,7 +609,7 @@ class ElysiumTelegramBot:
         
         if user_id in self.user_data:
             network = self.user_data[user_id].get("network", "unknown")
-            network_emoji = "🧪" if network == "testnet" else "🌐"
+            network_emoji = "🧪"
         
         message = (
             f"*Elysium Trading Bot - Main Menu*\n\n"
@@ -1290,7 +1289,7 @@ class ElysiumTelegramBot:
         
         if user_id in self.user_data:
             network = self.user_data[user_id].get("network", "unknown")
-            network_emoji = "🧪" if network == "testnet" else "🌐"
+            network_emoji = "🧪"
         
         # Check API status
         is_api_online, api_message = self.status_checker.check_api_status()
