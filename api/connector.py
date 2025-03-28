@@ -21,14 +21,14 @@ class ApiConnector:
         self.is_testnet = False
         self.wallet_address = None
         
-    def connect(self, wallet_address: str, secret_key: str, use_testnet: bool = False) -> bool:
+    def connect(self, wallet_address: str, secret_key: str, network: str):
         """
         Connect to Elysium API
         
         Args:
             wallet_address: Wallet address for authentication
             secret_key: Secret key for authentication 
-            use_testnet: Whether to use testnet (default is mainnet)
+            network: Which network to use
             
         Returns:
             True if connected successfully, False otherwise
@@ -37,17 +37,19 @@ class ApiConnector:
             endpoint = self.base_url + ENDPOINTS["connect"]
             
             data = {
+              "network": network,
+              "credentials": {
                 "wallet_address": wallet_address,
-                "secret_key": secret_key,
-                "use_testnet": use_testnet
+                "secret_key": secret_key
+              }
             }
             
-            self.logger.info(f"Connecting to Elysium API {'(testnet)' if use_testnet else '(mainnet)'}")
+            self.logger.info(f"Connecting to Elysium API {'network'}")
             response = self.session.post(endpoint, json=data, timeout=30)
             
             if response.status_code == 200:
                 self.connected = True
-                self.is_testnet = use_testnet
+                self.network = network
                 self.wallet_address = wallet_address
                 self.logger.info("Successfully connected to Elysium API")
                 return True
