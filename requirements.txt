@@ -2,7 +2,7 @@
 # Telegram Bot Dependencies
 python-telegram-bot==20.6
 urllib3==1.26.15
-httpx==0.23.0
+httpx==0.25.0
 
 # API and Network Dependencies
 requests>=2.28.2
