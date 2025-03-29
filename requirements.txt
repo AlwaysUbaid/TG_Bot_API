@@ -1,6 +1,6 @@
 # Dependencies required for the Elysium project
 # Telegram Bot Dependencies
-python-telegram-bot==13.7
+python-telegram-bot==20.6
 urllib3==1.26.15
 httpx==0.23.0
 
