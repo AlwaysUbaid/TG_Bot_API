@@ -38,6 +38,12 @@ API_ENDPOINTS = {
     'perp_limit_sell': '/api/v1/perp/limit-sell',
     'perp_close_position': '/api/v1/perp/close-position',
     'perp_set_leverage': '/api/v1/perp/set-leverage',
+
+    # Scaled order endpoints
+    'scaled_orders': '/api/v1/scaled/scaled-orders',
+    'perp_scaled_orders': '/api/v1/scaled/perp-scaled-orders',
+    'market_aware_scaled_buy': '/api/v1/scaled/market-aware-scaled-buy',
+    'market_aware_scaled_sell': '/api/v1/scaled/market-aware-scaled-sell',
 }
 
 # User messages
@@ -58,5 +64,6 @@ MESSAGES = {
             "/orders - View your open orders\n"
             "/spot - Spot trading options\n"
             "/perp - Perpetual trading options\n"
+            "/scaled - Advanced scaled order options\n"
             "/help - Show this help message",
 }

@@ -15,18 +15,19 @@ logger = logging.getLogger(__name__)
 from config import TELEGRAM_TOKEN
 from handlers import (
     start_command, connect_command, help_command,
-    balance_command, orders_command, spot_command, perp_command,
+    balance_command, orders_command, spot_command, perp_command, scaled_command,
     wallet_address_input, secret_key_input, network_selection,
-    trading_action_handler, symbol_input_handler, amount_input_handler,
+    trading_action_handler, scaled_action_handler, symbol_input_handler, amount_input_handler,
     price_input_handler, leverage_input_handler, slippage_input_handler,
-    confirm_order_handler, cancel_handler, status_command,  # Add status_command here
+    confirm_order_handler, cancel_handler, status_command,
+    min_price_input_handler, max_price_input_handler, num_orders_input_handler,
+    min_distance_input_handler, max_distance_input_handler,
     WALLET_ADDRESS, SECRET_KEY, NETWORK_SELECTION,
-    SPOT_ACTION, PERP_ACTION,
+    SPOT_ACTION, PERP_ACTION, SCALED_ACTION,
     SYMBOL_INPUT, AMOUNT_INPUT, PRICE_INPUT, LEVERAGE_INPUT, SLIPPAGE_INPUT,
+    MIN_PRICE_INPUT, MAX_PRICE_INPUT, NUM_ORDERS_INPUT, MIN_DISTANCE_INPUT, MAX_DISTANCE_INPUT,
     CONFIRM_ORDER
 )
-
-from config import TELEGRAM_TOKEN
 
 # Set up logging
 logging.basicConfig(
@@ -68,6 +69,9 @@ async def main() -> None:
             AMOUNT_INPUT: [MessageHandler(filters.TEXT & ~filters.COMMAND, amount_input_handler)],
             PRICE_INPUT: [MessageHandler(filters.TEXT & ~filters.COMMAND, price_input_handler)],
             SLIPPAGE_INPUT: [MessageHandler(filters.TEXT & ~filters.COMMAND, slippage_input_handler)],
+            MIN_PRICE_INPUT: [MessageHandler(filters.TEXT & ~filters.COMMAND, min_price_input_handler)],
+            MAX_PRICE_INPUT: [MessageHandler(filters.TEXT & ~filters.COMMAND, max_price_input_handler)],
+            NUM_ORDERS_INPUT: [MessageHandler(filters.TEXT & ~filters.COMMAND, num_orders_input_handler)],
             CONFIRM_ORDER: [MessageHandler(filters.TEXT & ~filters.COMMAND, confirm_order_handler)],
         },
         fallbacks=[CommandHandler("cancel", cancel_handler)],
@@ -84,11 +88,35 @@ async def main() -> None:
             PRICE_INPUT: [MessageHandler(filters.TEXT & ~filters.COMMAND, price_input_handler)],
             LEVERAGE_INPUT: [MessageHandler(filters.TEXT & ~filters.COMMAND, leverage_input_handler)],
             SLIPPAGE_INPUT: [MessageHandler(filters.TEXT & ~filters.COMMAND, slippage_input_handler)],
+            MIN_PRICE_INPUT: [MessageHandler(filters.TEXT & ~filters.COMMAND, min_price_input_handler)],
+            MAX_PRICE_INPUT: [MessageHandler(filters.TEXT & ~filters.COMMAND, max_price_input_handler)],
+            NUM_ORDERS_INPUT: [MessageHandler(filters.TEXT & ~filters.COMMAND, num_orders_input_handler)],
             CONFIRM_ORDER: [MessageHandler(filters.TEXT & ~filters.COMMAND, confirm_order_handler)],
         },
         fallbacks=[CommandHandler("cancel", cancel_handler)],
     )
     application.add_handler(perp_conv_handler)
+    
+    # Scaled orders conversation handler
+    scaled_conv_handler = ConversationHandler(
+        entry_points=[CommandHandler("scaled", scaled_command)],
+        states={
+            SCALED_ACTION: [CallbackQueryHandler(scaled_action_handler)],
+            SPOT_ACTION: [CallbackQueryHandler(trading_action_handler)],  # Reused for side selection
+            PERP_ACTION: [CallbackQueryHandler(trading_action_handler)],  # Reused for market type selection
+            SYMBOL_INPUT: [MessageHandler(filters.TEXT & ~filters.COMMAND, symbol_input_handler)],
+            AMOUNT_INPUT: [MessageHandler(filters.TEXT & ~filters.COMMAND, amount_input_handler)],
+            MIN_PRICE_INPUT: [MessageHandler(filters.TEXT & ~filters.COMMAND, min_price_input_handler)],
+            MAX_PRICE_INPUT: [MessageHandler(filters.TEXT & ~filters.COMMAND, max_price_input_handler)],
+            NUM_ORDERS_INPUT: [MessageHandler(filters.TEXT & ~filters.COMMAND, num_orders_input_handler)],
+            MIN_DISTANCE_INPUT: [MessageHandler(filters.TEXT & ~filters.COMMAND, min_distance_input_handler)],
+            MAX_DISTANCE_INPUT: [MessageHandler(filters.TEXT & ~filters.COMMAND, max_distance_input_handler)],
+            LEVERAGE_INPUT: [MessageHandler(filters.TEXT & ~filters.COMMAND, leverage_input_handler)],
+            CONFIRM_ORDER: [MessageHandler(filters.TEXT & ~filters.COMMAND, confirm_order_handler)],
+        },
+        fallbacks=[CommandHandler("cancel", cancel_handler)],
+    )
+    application.add_handler(scaled_conv_handler)
     
     # Start the bot
     logger.info("Starting Elysium Trading Bot")

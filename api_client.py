@@ -172,6 +172,69 @@ class ElysiumAPIClient:
         }
         return await self._make_request("POST", API_ENDPOINTS['perp_set_leverage'], payload)
     
+    async def spot_scaled_orders(self, symbol: str, total_amount: float, 
+                                  num_orders: int, min_price: float, max_price: float, 
+                                  side: str) -> Dict[str, Any]:
+        """Place scaled orders for spot trading"""
+        payload = {
+            "symbol": symbol,
+            "total_amount": total_amount,
+            "num_orders": num_orders,
+            "min_price": min_price,
+            "max_price": max_price,
+            "side": side
+        }
+        return await self._make_request("POST", API_ENDPOINTS['scaled_orders'], payload)
+    
+    async def perp_scaled_orders(self, symbol: str, total_amount: float, 
+                                  num_orders: int, min_price: float, max_price: float, 
+                                  side: str, leverage: int = 1) -> Dict[str, Any]:
+        """Place scaled orders for perpetual trading"""
+        payload = {
+            "symbol": symbol,
+            "total_amount": total_amount,
+            "num_orders": num_orders,
+            "min_price": min_price,
+            "max_price": max_price,
+            "side": side,
+            "leverage": leverage
+        }
+        return await self._make_request("POST", API_ENDPOINTS['perp_scaled_orders'], payload)
+    
+    async def market_aware_scaled_buy(self, symbol: str, total_amount: float, 
+                                      num_orders: int, min_distance: float, 
+                                      max_distance: float, market_type: str = "spot",
+                                      leverage: int = 1) -> Dict[str, Any]:
+        """Place market-aware scaled buy orders"""
+        payload = {
+            "symbol": symbol,
+            "total_amount": total_amount,
+            "num_orders": num_orders,
+            "min_distance": min_distance,
+            "max_distance": max_distance,
+            "market_type": market_type
+        }
+        if market_type == "perp":
+            payload["leverage"] = leverage
+        return await self._make_request("POST", API_ENDPOINTS['market_aware_scaled_buy'], payload)
+    
+    async def market_aware_scaled_sell(self, symbol: str, total_amount: float, 
+                                       num_orders: int, min_distance: float, 
+                                       max_distance: float, market_type: str = "spot",
+                                       leverage: int = 1) -> Dict[str, Any]:
+        """Place market-aware scaled sell orders"""
+        payload = {
+            "symbol": symbol,
+            "total_amount": total_amount,
+            "num_orders": num_orders,
+            "min_distance": min_distance,
+            "max_distance": max_distance,
+            "market_type": market_type
+        }
+        if market_type == "perp":
+            payload["leverage"] = leverage
+        return await self._make_request("POST", API_ENDPOINTS['market_aware_scaled_sell'], payload)
+
     async def cancel_order(self, symbol: str, order_id: int) -> Dict[str, Any]:
         """Cancel a specific order"""
         payload = {
