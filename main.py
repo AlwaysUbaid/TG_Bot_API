@@ -13,6 +13,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 from config import TELEGRAM_TOKEN
+
 from handlers import (
     start_command, connect_command, help_command,
     balance_command, orders_command, spot_command, perp_command, scaled_command,
@@ -22,11 +23,21 @@ from handlers import (
     confirm_order_handler, cancel_handler, status_command,
     min_price_input_handler, max_price_input_handler, num_orders_input_handler,
     min_distance_input_handler, max_distance_input_handler,
+     # Grid trading handlers
+    grid_command, grid_action_handler, grid_select_handler, grid_market_type_handler,
+    grid_symbol_handler, grid_lower_price_handler, grid_upper_price_handler,
+    grid_num_levels_handler, grid_investment_handler, grid_leverage_handler,
+    grid_take_profit_handler, grid_stop_loss_handler, grid_confirm_handler,
+    grid_start_now_handler, grid_list_handler, grid_status_handler,
     WALLET_ADDRESS, SECRET_KEY, NETWORK_SELECTION,
     SPOT_ACTION, PERP_ACTION, SCALED_ACTION,
     SYMBOL_INPUT, AMOUNT_INPUT, PRICE_INPUT, LEVERAGE_INPUT, SLIPPAGE_INPUT,
     MIN_PRICE_INPUT, MAX_PRICE_INPUT, NUM_ORDERS_INPUT, MIN_DISTANCE_INPUT, MAX_DISTANCE_INPUT,
-    CONFIRM_ORDER
+    CONFIRM_ORDER,
+    # Grid trading states
+    GRID_ACTION, GRID_SELECT, GRID_MARKET_TYPE, GRID_SYMBOL, GRID_LOWER_PRICE, 
+    GRID_UPPER_PRICE, GRID_NUM_LEVELS, GRID_INVESTMENT, GRID_LEVERAGE, 
+    GRID_TAKE_PROFIT, GRID_STOP_LOSS, GRID_CONFIRM, GRID_START_NOW
 )
 
 # Set up logging
@@ -117,6 +128,28 @@ async def main() -> None:
         fallbacks=[CommandHandler("cancel", cancel_handler)],
     )
     application.add_handler(scaled_conv_handler)
+
+    # Grid trading conversation handler
+    grid_conv_handler = ConversationHandler(
+        entry_points=[CommandHandler("grid", grid_command)],
+        states={
+            GRID_ACTION: [CallbackQueryHandler(grid_action_handler)],
+            GRID_SELECT: [CallbackQueryHandler(grid_select_handler)],
+            GRID_MARKET_TYPE: [CallbackQueryHandler(grid_market_type_handler)],
+            GRID_SYMBOL: [MessageHandler(filters.TEXT & ~filters.COMMAND, grid_symbol_handler)],
+            GRID_LOWER_PRICE: [MessageHandler(filters.TEXT & ~filters.COMMAND, grid_lower_price_handler)],
+            GRID_UPPER_PRICE: [MessageHandler(filters.TEXT & ~filters.COMMAND, grid_upper_price_handler)],
+            GRID_NUM_LEVELS: [MessageHandler(filters.TEXT & ~filters.COMMAND, grid_num_levels_handler)],
+            GRID_INVESTMENT: [MessageHandler(filters.TEXT & ~filters.COMMAND, grid_investment_handler)],
+            GRID_LEVERAGE: [MessageHandler(filters.TEXT & ~filters.COMMAND, grid_leverage_handler)],
+            GRID_TAKE_PROFIT: [MessageHandler(filters.TEXT & ~filters.COMMAND, grid_take_profit_handler)],
+            GRID_STOP_LOSS: [MessageHandler(filters.TEXT & ~filters.COMMAND, grid_stop_loss_handler)],
+            GRID_CONFIRM: [MessageHandler(filters.TEXT & ~filters.COMMAND, grid_confirm_handler)],
+            GRID_START_NOW: [CallbackQueryHandler(grid_start_now_handler)],
+        },
+        fallbacks=[CommandHandler("cancel", cancel_handler)],
+    )
+    application.add_handler(grid_conv_handler)
     
     # Start the bot
     logger.info("Starting Elysium Trading Bot")

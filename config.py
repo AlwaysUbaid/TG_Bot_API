@@ -65,5 +65,6 @@ MESSAGES = {
             "/spot - Spot trading options\n"
             "/perp - Perpetual trading options\n"
             "/scaled - Advanced scaled order options\n"
+            "/grid - Grid trading options\n"
             "/help - Show this help message",
 }
